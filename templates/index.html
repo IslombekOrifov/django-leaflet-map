@@ -19,14 +19,17 @@
         <input type="hidden" id="longitude" name="longitude">
         <button type="submit">Save Location</button>
     </form>
+    <input type="text" id="searchInput" placeholder="Search location">
+    <button type="button" onclick="searchLocation()">Search</button>
 
     <script>
         var map = L.map('map').setView([41.311081, 69.240562], 12); // Tashkent's coordinates and zoom level
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
         }).addTo(map);
-
+    
         var marker;
+    
         map.on('click', function(e) {
             if (marker) {
                 map.removeLayer(marker);
@@ -35,6 +38,42 @@
             document.getElementById('latitude').value = e.latlng.lat;
             document.getElementById('longitude').value = e.latlng.lng;
         });
+    
+        // Function to handle search input
+        function searchLocation() {
+            var input = document.getElementById("searchInput").value;
+            if (!input || input.trim() === "") return;
+    
+            // Define the bounding box for Tashkent
+            var bbox = "69.132786,41.154153,69.417133,41.435026"; // [left, bottom, right, top]
+    
+            var url = "https://nominatim.openstreetmap.org/search?format=json&q=" + input + "&viewbox=" + bbox;
+    
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        var result = data[0];
+                        var latlng = L.latLng(result.lat, result.lon);
+                        map.setView(latlng, 12);
+                        if (marker) {
+                            map.removeLayer(marker);
+                        }
+                        marker = L.marker(latlng).addTo(map);
+                        document.getElementById('latitude').value = latlng.lat;
+                        document.getElementById('longitude').value = latlng.lng;
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    
+        document.getElementById("searchInput").addEventListener("keypress", function(event) {
+            if (event.keyCode === 13) {
+                event.preventDefault();
+                searchLocation();
+            }
+        });
     </script>
+    
 </body>
 </html>
