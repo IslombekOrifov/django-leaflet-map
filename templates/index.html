@@ -8,7 +8,6 @@
     {% leaflet_css %}
     <style>
         #map { height: 400px; width: 50%;}
-        #addressName { margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -18,19 +17,19 @@
         {% csrf_token %}
         <input type="hidden" id="latitude" name="latitude">
         <input type="hidden" id="longitude" name="longitude">
-        <input type="text" id="searchInput" placeholder="Search location">
-        <button type="button" onclick="searchLocation()">Search</button>
-        <div id="addressName"></div>
         <button type="submit">Save Location</button>
     </form>
+    <input type="text" id="searchInput" placeholder="Search location">
+    <button type="button" onclick="searchLocation()">Search</button>
 
     <script>
         var map = L.map('map').setView([41.311081, 69.240562], 12); // Tashkent's coordinates and zoom level
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
         }).addTo(map);
-
+    
         var marker;
+    
         map.on('click', function(e) {
             if (marker) {
                 map.removeLayer(marker);
@@ -39,33 +38,42 @@
             document.getElementById('latitude').value = e.latlng.lat;
             document.getElementById('longitude').value = e.latlng.lng;
         });
-
+    
+        // Function to handle search input
         function searchLocation() {
-            var addressInput = document.getElementById('searchInput').value;
-            var searchQuery = addressInput + ', Tashkent';
-            fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + searchQuery)
-            .then(response => response.json())
-            .then(data => {
-                if (data.length > 0) {
-                    var address = data[0];
-                    map.setView([address.lat, address.lon], 12);
-                    if (marker) {
-                        map.removeLayer(marker);
+            var input = document.getElementById("searchInput").value;
+            if (!input || input.trim() === "") return;
+    
+            // Define the bounding box for Tashkent
+            var bbox = "69.132786,41.154153,69.417133,41.435026"; // [left, bottom, right, top]
+    
+            var url = "https://nominatim.openstreetmap.org/search?format=json&q=" + input + "&viewbox=" + bbox;
+    
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        var result = data[0];
+                        var latlng = L.latLng(result.lat, result.lon);
+                        map.setView(latlng, 12);
+                        if (marker) {
+                            map.removeLayer(marker);
+                        }
+                        marker = L.marker(latlng).addTo(map);
+                        document.getElementById('latitude').value = latlng.lat;
+                        document.getElementById('longitude').value = latlng.lng;
                     }
-                    marker = L.marker([address.lat, address.lon]).addTo(map);
-                    document.getElementById('latitude').value = address.lat;
-                    document.getElementById('longitude').value = address.lon;
-                    document.getElementById('addressName').innerText = address.display_name;
-                } else {
-                    document.getElementById('addressName').innerText = 'Address not found';
-                }
-            })
-            .catch(error => {
-                console.error('Error searching address:', error);
-                document.getElementById('addressName').innerText = 'Error searching address';
-            });
+                })
+                .catch(error => console.error('Error:', error));
         }
-        
+    
+        document.getElementById("searchInput").addEventListener("keypress", function(event) {
+            if (event.keyCode === 13) {
+                event.preventDefault();
+                searchLocation();
+            }
+        });
     </script>
+    
 </body>
 </html>
